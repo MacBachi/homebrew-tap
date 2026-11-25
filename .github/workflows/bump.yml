@@ -1,0 +1,38 @@
+name: bump casks
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+  repository_dispatch:
+    types: [release]
+
+permissions:
+  contents: write
+
+concurrency: bump
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: update casks to latest releases
+        id: bump
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          changes=$(scripts/bump.sh)
+          echo "$changes"
+          {
+            echo "changes<<EOF"
+            echo "$changes"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: commit
+        if: steps.bump.outputs.changes != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "bump: $(echo '${{ steps.bump.outputs.changes }}' | paste -sd ', ' -)"
+          git push
